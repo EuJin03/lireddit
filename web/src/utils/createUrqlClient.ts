@@ -1,29 +1,18 @@
-import { CSSReset, ThemeProvider } from "@chakra-ui/react";
-import { Cache, cacheExchange, QueryInput } from "@urql/exchange-graphcache";
-import { createClient, dedupExchange, fetchExchange, Provider } from "urql";
+import { dedupExchange, fetchExchange } from "urql";
 import {
-  LoginMutation,
   LogoutMutation,
-  MeDocument,
   MeQuery,
+  MeDocument,
+  LoginMutation,
   RegisterMutation,
 } from "../generated/graphql";
+import { cacheExchange } from "@urql/exchange-graphcache";
+import { betterUpdateQuery } from "./betterUpdateQuery";
 
-import theme from "../theme";
-
-function betterUpdateQuery<Result, Query>(
-  cache: Cache,
-  qi: QueryInput,
-  result: any,
-  fn: (r: Result, q: Query) => Query
-) {
-  return cache.updateQuery(qi, data => fn(result, data as any) as any);
-}
-
-const client = createClient({
+export const createUrqlClient = (ssrExchange: any) => ({
   url: "http://localhost:5000/graphql",
   fetchOptions: {
-    credentials: "include", // sending cookies
+    credentials: "include" as const, // sending cookies
   },
   exchanges: [
     dedupExchange,
@@ -73,19 +62,7 @@ const client = createClient({
         },
       },
     }),
+    ssrExchange,
     fetchExchange,
   ],
 });
-
-const MyApp = ({ Component, pageProps }: any) => {
-  return (
-    <Provider value={client}>
-      <ThemeProvider theme={theme}>
-        <CSSReset />
-        <Component {...pageProps} />
-      </ThemeProvider>
-    </Provider>
-  );
-};
-
-export default MyApp;
