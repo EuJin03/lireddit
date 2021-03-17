@@ -2,7 +2,7 @@
 import "reflect-metadata";
 // MIKRO-ORM SETUP
 import { MikroORM } from "@mikro-orm/core";
-import { __prod__, __psql__, __port__, __priv__ } from "./constants";
+import { __prod__, __psql__, __port__, __priv__, __cook__ } from "./constants";
 import microConfig from "./mikro-orm.config";
 
 // EXPRESS & APOLLO SETUP
@@ -12,12 +12,12 @@ import { buildSchema } from "type-graphql";
 import { HelloResolver } from "./resolvers/hello";
 import { PostResolver } from "./resolvers/post";
 import { UserResolver } from "./resolvers/user";
+import cors from "cors";
 
 // REDIS SETUP
 import redis from "redis";
 import session from "express-session";
 import connectRedis from "connect-redis";
-import { MyContext } from "./types";
 
 const main = async () => {
   // config
@@ -28,10 +28,16 @@ const main = async () => {
   let redisClient = redis.createClient();
 
   const app = express();
+  app.use(
+    cors({
+      origin: "http://localhost:3000",
+      credentials: true,
+    })
+  );
 
   app.use(
     session({
-      name: "qid",
+      name: __cook__,
       store: new RedisStore({
         client: redisClient,
         disableTTL: true,
@@ -55,10 +61,13 @@ const main = async () => {
       validate: false,
     }),
     // allow what to be access in the resolver, able to pass (req, res) from express
-    context: ({ req, res }): MyContext => ({ em: orm.em, req, res }),
+    context: ({ req, res }) => ({ em: orm.em, req, res }),
   });
 
-  apolloServer.applyMiddleware({ app });
+  apolloServer.applyMiddleware({
+    app,
+    cors: false,
+  });
 
   app.listen(__port__, () => {
     console.log(`Server is running at port ${__port__}`);

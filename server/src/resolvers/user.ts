@@ -11,6 +11,8 @@ import {
   Resolver,
 } from "type-graphql";
 import argon2 from "argon2";
+import { EntityManager } from "@mikro-orm/postgresql";
+import { __cook__ } from "../constants";
 
 // inputType use for arguments, ObjectType use for return object
 @InputType()
@@ -79,19 +81,31 @@ export class UserResolver {
     }
 
     const hashedPassword = await argon2.hash(options.password);
-    const user = em.create(User, {
-      username: options.username,
-      password: hashedPassword,
-    });
+    let user;
     try {
-      await em.persistAndFlush(user);
+      const result = await (em as EntityManager)
+        .createQueryBuilder(User)
+        .getKnexQuery()
+        .insert({
+          username: options.username,
+          password: hashedPassword,
+          created_at: new Date(),
+          updated_at: new Date(),
+        })
+        .returning("*");
+      user = result[0];
+      // const user = em.create(User, {
+      //   username: options.username,
+      //   password: hashedPassword,
+      // });
+      // await em.persistAndFlush(user);
     } catch (err) {
       if (err.code === "23505" || err.details.includes("already exists")) {
         return {
           errors: [
             {
               field: "username",
-              message: "username already token",
+              message: "username already taken",
             },
           ],
         };
@@ -144,5 +158,20 @@ export class UserResolver {
     return {
       user,
     };
+  }
+
+  @Mutation(() => Boolean)
+  logout(@Ctx() { req, res }: MyContext) {
+    return new Promise(resolve =>
+      req.session.destroy(err => {
+        res.clearCookie(`${__cook__}`);
+        if (err) {
+          console.log(err);
+          resolve(false);
+          return;
+        }
+        resolve(true);
+      })
+    );
   }
 }
