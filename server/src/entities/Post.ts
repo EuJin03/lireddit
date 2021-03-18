@@ -1,7 +1,5 @@
 import { Entity, PrimaryKey, Property } from "@mikro-orm/core";
 import { Field, ObjectType } from "type-graphql";
-
-const sleep = (ms: number) => new Promise(res => setTimeout(res, ms));
 @ObjectType()
 @Entity()
 export class Post {

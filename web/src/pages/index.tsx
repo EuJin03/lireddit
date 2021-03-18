@@ -9,8 +9,10 @@ const Index = () => {
   return (
     <>
       <NavBar />
+      <div>hello world</div>
+      <br />
       {!data ? (
-        <div>hello</div>
+        <div>loading...</div>
       ) : (
         data.posts.map(p => <div key={p.id}>{p.title}</div>)
       )}
@@ -19,3 +21,4 @@ const Index = () => {
 };
 
 export default withUrqlClient(createUrqlClient, { ssr: true })(Index);
+// specifically enable ssr to remove rerendering on client side
