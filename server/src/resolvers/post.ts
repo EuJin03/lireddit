@@ -1,7 +1,7 @@
 import { Post } from "../entities/Post";
 import { MyContext } from "src/types";
 import { Resolver, Query, Ctx, Arg, Mutation } from "type-graphql";
-import { sleep } from "../utils/sleep";
+// import { sleep } from "../utils/sleep";
 @Resolver()
 export class PostResolver {
   @Query(() => [Post])

@@ -13,13 +13,12 @@ import argon2 from "argon2";
 import { EntityManager } from "@mikro-orm/postgresql";
 import { __cook__ } from "../constants";
 import { UsernamePasswordInput } from "./UsernamePasswordInput";
-import { validateRegister } from "../utils/validateRegister";
+import { email, validateRegister } from "../utils/validateRegister";
 
 @ObjectType()
 class FieldError {
   @Field()
   field: string;
-
   @Field()
   message: string;
 }
@@ -45,7 +44,7 @@ export class UserResolver {
     return user;
   }
 
-  @Mutation(() => Boolean)
+  // @Mutation(() => Boolean)
   // async forgotPassword(
   //   @Arg("email") email: string,
   //   @Ctx() { em, req }: MyContext
@@ -85,15 +84,28 @@ export class UserResolver {
       // });
       // await em.persistAndFlush(user);
     } catch (err) {
+      console.log(err);
       if (err.code === "23505" || err.details.includes("already exists")) {
-        return {
-          errors: [
-            {
-              field: "username",
-              message: "username already taken",
-            },
-          ],
-        };
+        if (err.detail.includes("username")) {
+          return {
+            errors: [
+              {
+                field: "username",
+                message: "username is already taken",
+              },
+            ],
+          };
+        }
+        if (err.detail.includes("email")) {
+          return {
+            errors: [
+              {
+                field: "email",
+                message: "Email is already in use",
+              },
+            ],
+          };
+        }
       }
     }
 
@@ -101,6 +113,8 @@ export class UserResolver {
     // this will set a cookie on the user
     // keep them logged in
     req.session.userId = user.id;
+
+    console.log(user);
 
     return {
       user,
@@ -113,9 +127,7 @@ export class UserResolver {
     @Arg("password") password: string,
     @Ctx() { em, req }: MyContext
   ): Promise<UserResponse> {
-    const validateEmail = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/.test(
-      usernameOrEmail
-    );
+    const validateEmail = email.test(usernameOrEmail);
     const user = await em.findOne(
       User,
       validateEmail ? { email: usernameOrEmail } : { username: usernameOrEmail }
@@ -124,8 +136,8 @@ export class UserResolver {
       return {
         errors: [
           {
-            field: "username",
-            message: "username does not exist",
+            field: "usernameOrEmail",
+            message: "username or email does not exist",
           },
         ],
       };

@@ -1,11 +1,10 @@
 import { UsernamePasswordInput } from "src/resolvers/UsernamePasswordInput";
 
+export const email = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+
 export const validateRegister = (options: UsernamePasswordInput) => {
   // email
-  const validateEmail = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*$/.test(
-    options.email
-  );
-
+  const validateEmail = email.test(options.email);
   if (!validateEmail) {
     return [
       {
@@ -26,16 +25,16 @@ export const validateRegister = (options: UsernamePasswordInput) => {
   }
 
   // password
-  if (options.password.length <= 8) {
+  if (options.password.length < 6) {
     return [
       {
         field: "password",
-        message: "length must be greater than 8",
+        message: "length must be greater than 6",
       },
     ];
   }
 
-  const validatePassword = /^[a-zA-Z0-9!@#\$%\^\&*\)\(+=._-]{8,}$/g.test(
+  const validatePassword = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&])[A-Za-z\d@$!%*#?&]{8,}$/.test(
     options.password
   );
 

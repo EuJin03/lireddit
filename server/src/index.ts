@@ -18,13 +18,13 @@ import cors from "cors";
 import redis from "redis";
 import session from "express-session";
 import connectRedis from "connect-redis";
-import { sendEmail } from "./utils/sendEmail";
-import { User } from "./entities/User";
+// import { sendEmail } from "./utils/sendEmail";
+// import { User } from "./entities/User";
 
 const main = async () => {
   // config
   const orm = await MikroORM.init(microConfig);
-  // await orm.em.nativeDelete(User, {});
+
   await orm.getMigrator().up();
 
   let RedisStore = connectRedis(session);
@@ -83,3 +83,4 @@ main().catch(err => console.error(err));
 // const post = orm.em.create(Post, { title: "my first post" });
 // await orm.em.persistAndFlush(post);
 // const posts = await orm.em.find(Post, {});
+// await orm.em.nativeDelete(User, {});

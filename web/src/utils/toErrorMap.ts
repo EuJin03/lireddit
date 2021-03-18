@@ -6,5 +6,6 @@ export const toErrorMap = (errors: FieldError[]) => {
     errorMap[field] = message;
   });
 
+  console.log(errorMap);
   return errorMap;
 };
