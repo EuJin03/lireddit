@@ -11,9 +11,11 @@ import {
 } from "type-graphql";
 import argon2 from "argon2";
 import { EntityManager } from "@mikro-orm/postgresql";
-import { __cook__ } from "../constants";
+import { __cook__, __pfix__ } from "../constants";
 import { UsernamePasswordInput } from "./UsernamePasswordInput";
 import { email, validateRegister } from "../utils/validateRegister";
+import { sendEmail } from "../utils/sendEmail";
+import { v4 } from "uuid";
 
 @ObjectType()
 class FieldError {
@@ -44,14 +46,89 @@ export class UserResolver {
     return user;
   }
 
-  // @Mutation(() => Boolean)
-  // async forgotPassword(
-  //   @Arg("email") email: string,
-  //   @Ctx() { em, req }: MyContext
-  // ) {
-  //   const person = await em.findOne(User, { email });
-  //   return true;
-  // }
+  @Mutation(() => UserResponse)
+  async changePassword(
+    @Arg("token") token: string,
+    @Arg("newPassword") newPassword: string,
+    @Ctx() { redis, em, req }: MyContext
+  ): Promise<UserResponse> {
+    const validatePassword = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&])[A-Za-z\d@$!%*#?&]{8,}$/.test(
+      newPassword
+    );
+
+    if (!validatePassword) {
+      return {
+        errors: [
+          {
+            field: "newPassword",
+            message:
+              "Password must be more than 8 characters, contain letters, numbers and special characters",
+          },
+        ],
+      };
+    }
+
+    const key = __pfix__ + token;
+    const userId = await redis.get(key);
+
+    if (!userId) {
+      return {
+        // either does not exist or expired
+        errors: [
+          {
+            field: "token",
+            message: "token expired",
+          },
+        ],
+      };
+    }
+
+    const user = await em.findOne(User, { id: parseInt(userId) });
+
+    if (!user) {
+      return {
+        errors: [
+          {
+            field: "token",
+            message: "user no longer exist",
+          },
+        ],
+      };
+    }
+
+    user.password = await argon2.hash(newPassword);
+    await em.persistAndFlush(user);
+
+    // log in user after change password
+    req.session.userId = user.id;
+
+    redis.del(key);
+
+    return { user };
+  }
+
+  @Mutation(() => Boolean)
+  async forgotPassword(
+    @Arg("email") email: string,
+    @Ctx() { em, redis }: MyContext
+  ) {
+    const user = await em.findOne(User, { email });
+    if (!user) {
+      // the email is not in the db
+      return true;
+    }
+
+    const token = v4();
+
+    redis.set(__pfix__ + token, user.id, "ex", 1000 * 60 * 60 * 24 * 3); // 3 days
+
+    sendEmail(
+      email,
+      `<a href='http://localhost:3000/change-password/${token}'>reset password</a>`
+    );
+    return true;
+  }
+
   @Mutation(() => UserResponse)
   async register(
     @Arg("options") options: UsernamePasswordInput,
@@ -84,7 +161,6 @@ export class UserResolver {
       // });
       // await em.persistAndFlush(user);
     } catch (err) {
-      console.log(err);
       if (err.code === "23505" || err.details.includes("already exists")) {
         if (err.detail.includes("username")) {
           return {
@@ -113,8 +189,6 @@ export class UserResolver {
     // this will set a cookie on the user
     // keep them logged in
     req.session.userId = user.id;
-
-    console.log(user);
 
     return {
       user,
@@ -168,7 +242,6 @@ export class UserResolver {
       req.session.destroy(err => {
         res.clearCookie(`${__cook__}`);
         if (err) {
-          console.log(err);
           resolve(false);
           return;
         }

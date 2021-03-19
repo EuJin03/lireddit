@@ -7,3 +7,4 @@ export const __psql__ = process.env.SQL_SECRET;
 export const __port__ = process.env.PORT;
 export const __priv__ = process.env.REDIS_SECRET;
 export const __cook__ = process.env.COOKIE_NAME;
+export const __pfix__ = process.env.FORGET_PASSWORD_PREFIX;

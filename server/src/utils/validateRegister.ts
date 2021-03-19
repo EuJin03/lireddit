@@ -34,7 +34,7 @@ export const validateRegister = (options: UsernamePasswordInput) => {
     ];
   }
 
-  const validatePassword = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&])[A-Za-z\d@$!%*#?&]{8,}$/.test(
+  const validatePassword = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&])[A-Za-z\d@$!%*#?&]{6,}$/.test(
     options.password
   );
 

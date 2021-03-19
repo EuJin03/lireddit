@@ -15,7 +15,8 @@ import { UserResolver } from "./resolvers/user";
 import cors from "cors";
 
 // REDIS SETUP
-import redis from "redis";
+// import redis from "redis";
+import Redis from "ioredis";
 import session from "express-session";
 import connectRedis from "connect-redis";
 // import { sendEmail } from "./utils/sendEmail";
@@ -27,8 +28,8 @@ const main = async () => {
 
   await orm.getMigrator().up();
 
-  let RedisStore = connectRedis(session);
-  let redisClient = redis.createClient();
+  const RedisStore = connectRedis(session);
+  const redis = new Redis();
 
   const app = express();
   app.use(
@@ -42,7 +43,7 @@ const main = async () => {
     session({
       name: __cook__,
       store: new RedisStore({
-        client: redisClient,
+        client: redis,
         disableTTL: true,
         disableTouch: true,
       }),
@@ -64,7 +65,7 @@ const main = async () => {
       validate: false,
     }),
     // allow what to be access in the resolver, able to pass (req, res) from express
-    context: ({ req, res }) => ({ em: orm.em, req, res }),
+    context: ({ req, res }) => ({ em: orm.em, req, res, redis }),
   });
 
   apolloServer.applyMiddleware({
