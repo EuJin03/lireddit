@@ -1,9 +1,11 @@
 // required for type-graphql
 import "reflect-metadata";
-// MIKRO-ORM SETUP
-import { MikroORM } from "@mikro-orm/core";
 import { __prod__, __psql__, __port__, __priv__, __cook__ } from "./constants";
-import microConfig from "./mikro-orm.config";
+
+// TYPE-ORM SETUP
+import { createConnection } from "typeorm";
+import { User } from "./entities/User";
+import { Post } from "./entities/Post";
 
 // EXPRESS & APOLLO SETUP
 import express from "express";
@@ -19,14 +21,18 @@ import cors from "cors";
 import Redis from "ioredis";
 import session from "express-session";
 import connectRedis from "connect-redis";
-// import { sendEmail } from "./utils/sendEmail";
-// import { User } from "./entities/User";
 
 const main = async () => {
-  // config
-  const orm = await MikroORM.init(microConfig);
-
-  await orm.getMigrator().up();
+  // typeorm config
+  await createConnection({
+    type: "postgres",
+    database: "lireddit2",
+    username: "postgres",
+    password: __psql__,
+    logging: true,
+    synchronize: true, // no need to do migration
+    entities: [Post, User],
+  });
 
   const RedisStore = connectRedis(session);
   const redis = new Redis();
@@ -65,7 +71,7 @@ const main = async () => {
       validate: false,
     }),
     // allow what to be access in the resolver, able to pass (req, res) from express
-    context: ({ req, res }) => ({ em: orm.em, req, res, redis }),
+    context: ({ req, res }) => ({ req, res, redis }),
   });
 
   apolloServer.applyMiddleware({
