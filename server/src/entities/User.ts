@@ -9,6 +9,7 @@ import {
   UpdateDateColumn,
 } from "typeorm";
 import { Post } from "./Post";
+import { Updoot } from "./Updoot";
 
 @ObjectType()
 @Entity()
@@ -28,9 +29,6 @@ export class User extends BaseEntity {
   @Column()
   password!: string;
 
-  @OneToMany(() => Post, post => post.creator)
-  posts: Post[];
-
   @Field(() => String)
   @CreateDateColumn()
   createdAt = Date;
@@ -38,6 +36,15 @@ export class User extends BaseEntity {
   @Field(() => String)
   @UpdateDateColumn()
   updatedAt = Date;
+
+  // 4 hours spend to find solution for you bitch
+  @Field(() => [Post])
+  @OneToMany(() => Post, post => post.creator)
+  posts: Post[];
+
+  @Field(() => [Updoot])
+  @OneToMany(() => Updoot, updoot => updoot.user)
+  updoots: Updoot[];
 }
 
 // Field prop is used to identify which field to expose or hide

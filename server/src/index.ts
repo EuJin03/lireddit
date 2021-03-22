@@ -1,6 +1,7 @@
 // required for type-graphql
 import "reflect-metadata";
 import { __prod__, __psql__, __port__, __priv__, __cook__ } from "./constants";
+import path from "path";
 
 // TYPE-ORM SETUP
 import { createConnection } from "typeorm";
@@ -21,6 +22,7 @@ import cors from "cors";
 import Redis from "ioredis";
 import session from "express-session";
 import connectRedis from "connect-redis";
+import { Updoot } from "./entities/Updoot";
 
 const main = async () => {
   // typeorm config
@@ -30,9 +32,11 @@ const main = async () => {
     username: "postgres",
     password: __psql__,
     logging: true,
-    synchronize: true, // no need to do migration
-    entities: [Post, User],
+    migrations: [path.join(__dirname, "./migrations/*")],
+    synchronize: true,
+    entities: [Post, User, Updoot],
   });
+  // await conn.runMigrations();
 
   const RedisStore = connectRedis(session);
   const redis = new Redis();
