@@ -17,6 +17,7 @@ import { MyContext } from "src/types";
 import { isAuth } from "../middleware/isAuth";
 import { getConnection } from "typeorm";
 import { Updoot } from "../entities/Updoot";
+import { User } from "../entities/User";
 
 @InputType()
 class PostInput {
@@ -41,9 +42,32 @@ export class PostResolver {
     return root.text.slice(0, 100);
   }
 
+  @FieldResolver(() => User)
+  creator(@Root() post: Post, @Ctx() { userLoader }: MyContext) {
+    return userLoader.load(post.creatorId);
+  }
+
+  @FieldResolver(() => Int, { nullable: true })
+  async voteStatus(
+    @Root() post: Post,
+    @Ctx() { updootLoader, req }: MyContext
+  ) {
+    if (!req.session.userId) {
+      return null;
+    }
+
+    const updoot = await updootLoader.load({
+      postId: post.id,
+      userId: req.session.userId,
+    });
+
+    return updoot ? updoot.value : null;
+  }
+
   @Query(() => Post, { nullable: true })
   post(@Arg("id", () => Int) id: number): Promise<Post | undefined> {
-    return Post.findOne(id, { relations: ["creator"] });
+    return Post.findOne(id);
+    // { relations: ["creator"] }
   }
 
   @Query(() => PaginatedPosts)
@@ -55,42 +79,31 @@ export class PostResolver {
     // 20 -> 21
     const realLimit = Math.min(20, limit);
     const realLimitPlusOne = realLimit + 1;
-    const { userId } = req.session;
-    console.log("userId: ", userId);
 
     const replacements: any[] = [realLimitPlusOne];
-    if (userId) {
-      replacements.push(userId);
-    }
 
-    let cursorIdx = 3;
     if (cursor) {
       replacements.push(new Date(parseInt(cursor)));
-      cursorIdx = replacements.length;
     }
     const posts = await getConnection().query(
       `
-      SELECT p.*, 
-      json_build_object(
-        'id', u.id,
-        'username', u.username,
-        'email', u.email, 
-        'createdAt', u."createdAt",
-        'updatedAt', u."updatedAt"     
-        ) creator,
-      ${
-        userId
-          ? '(select value from updoot where "userId" = $2 and "postId" = p.id) "voteStatus"'
-          : 'null as "voteStatus"'
-      }
+     SELECT p.*
       FROM post p
-      INNER JOIN public.user u ON u.id = p."creatorId"
-      ${cursor ? `WHERE p."createdAt" < $${cursorIdx}` : ""}
+      ${cursor ? `WHERE p."createdAt" < $2` : ""}
       ORDER BY p."createdAt" DESC
       LIMIT $1
     `,
       replacements
     );
+
+    // json_build_object(
+    //   'id', u.id,
+    //   'username', u.username,
+    //   'email', u.email,
+    //   'createdAt', u."createdAt",
+    //   'updatedAt', u."updatedAt"
+    //   ) creator,
+    //   INNER JOIN public.user u ON u.id = p."creatorId"
     // console.log(posts);
 
     // const qb = getConnection()
@@ -147,7 +160,7 @@ export class PostResolver {
           set points = points + $1
           where id = $2
           `,
-          [realValue, postId]
+          [2 * realValue, postId]
         );
       });
     } else if (!updoot) {

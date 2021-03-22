@@ -15,7 +15,7 @@ import {
   DeletePostMutationVariables,
 } from "../generated/graphql";
 import { devtoolsExchange } from "@urql/devtools";
-import { cacheExchange, Resolver } from "@urql/exchange-graphcache";
+import { Cache, cacheExchange, Resolver } from "@urql/exchange-graphcache";
 import { betterUpdateQuery } from "./betterUpdateQuery";
 import Router from "next/router";
 
@@ -73,6 +73,14 @@ const cursorPagination = (): Resolver => {
   };
 };
 
+function invalidateAllPosts(cache: Cache) {
+  const allFields = cache.inspectFields("Query");
+  const fieldInfos = allFields.filter(info => info.fieldName === "posts");
+  fieldInfos.forEach(fi => {
+    cache.invalidate("Query", "posts", fi.arguments || {});
+  });
+}
+
 export const createUrqlClient = (ssrExchange: any, ctx: any) => {
   let cookie = "";
   if (isServer()) {
@@ -125,7 +133,8 @@ export const createUrqlClient = (ssrExchange: any, ctx: any) => {
                 if (data.voteStatus === value) {
                   return;
                 }
-                const newPoints = data.points + value;
+                const newPoints =
+                  (data.points as number) + (!data.voteStatus ? 1 : 2) * value;
                 cache.writeFragment(
                   gql`
                     fragment __ on Post {
@@ -138,14 +147,7 @@ export const createUrqlClient = (ssrExchange: any, ctx: any) => {
               }
             },
             createPost: (_result, args, cache, info) => {
-              const allFields = cache.inspectFields("Query");
-              const fieldInfos = allFields.filter(
-                info => info.fieldName === "posts"
-              );
-              fieldInfos.forEach(fi => {
-                cache.invalidate("Query", "posts", fi.arguments || {});
-              });
-
+              invalidateAllPosts(cache);
               // console.log(cache.inspectFields("Query"));
             },
             logout: (_result, args, cache, info) => {
